@@ -43,6 +43,7 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeBtn = document.getElementById('theme-toggle');
 
+let combo = 0, maxCombo = 0;
 let gridColor = '#22222e';
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
@@ -108,6 +109,8 @@ function clearLines() {
       r++;
     }
   }
+  combo = cleared ? combo + 1 : 0;
+  maxCombo = Math.max(maxCombo, combo);
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
@@ -229,6 +232,7 @@ function endGame() {
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+  showGameOverRecords();
 }
 
 function togglePause() {
@@ -269,6 +273,9 @@ function init() {
   level = 1;
   paused = false;
   gameOver = false;
+  combo = 0;
+  maxCombo = 0;
+  overlay.dataset.mode = '';
   dropInterval = 1000;
   dropAccum = 0;
   lastTime = performance.now();
@@ -281,6 +288,7 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (isInputBlocked(e)) return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -328,4 +336,162 @@ let savedTheme = 'dark';
 try { savedTheme = localStorage.getItem('theme') === 'light' ? 'light' : 'dark'; } catch (e) { /* sin persistencia */ }
 applyTheme(savedTheme);
 
-init();
+// ---- Records locales ----
+const RECORDS_KEY = 'tetrisRecords';
+const RECORDS_STATS_KEY = 'tetrisRecordsStats';
+const MAX_RECORDS = 5;
+const startOverlay = document.getElementById('start-overlay');
+const startBtn = document.getElementById('start-btn');
+const recordEntry = document.getElementById('record-entry');
+const recordForm = document.getElementById('record-form');
+const recordName = document.getElementById('record-name');
+let highlightIdx = -1;
+let pendingRecord = false;
+
+function loadRecords() {
+  try {
+    const data = JSON.parse(localStorage.getItem(RECORDS_KEY));
+    if (!Array.isArray(data)) return [];
+    return data
+      .filter(r => r && Number.isFinite(r.score))
+      .map(r => ({
+        name: String(r.name ?? '').slice(0, 12), score: r.score,
+        lines: Number(r.lines) || 0, maxCombo: Number(r.maxCombo) || 0, date: String(r.date ?? ''),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_RECORDS);
+  } catch (e) { return []; }
+}
+
+function saveRecords(list) {
+  try { localStorage.setItem(RECORDS_KEY, JSON.stringify(list)); } catch (e) { /* sin persistencia */ }
+}
+
+function loadStats() {
+  try {
+    const d = JSON.parse(localStorage.getItem(RECORDS_STATS_KEY)) || {};
+    return { maxLines: Number(d.maxLines) || 0, maxCombo: Number(d.maxCombo) || 0 };
+  } catch (e) { return { maxLines: 0, maxCombo: 0 }; }
+}
+
+function saveStats(st) {
+  try { localStorage.setItem(RECORDS_STATS_KEY, JSON.stringify(st)); } catch (e) { /* sin persistencia */ }
+}
+
+function qualifiesForRecord() {
+  if (score <= 0) return false;
+  const list = loadRecords();
+  return list.length < MAX_RECORDS || score > list[list.length - 1].score;
+}
+
+function renderRecords(container) {
+  const list = loadRecords();
+  const st = loadStats();
+  container.textContent = '';
+  const add = (tag, cls, text) => {
+    const el = document.createElement(tag);
+    if (cls) el.className = cls;
+    if (text !== undefined) el.textContent = text;
+    container.appendChild(el);
+    return el;
+  };
+  add('span', 'records-title', 'MEJORES PUNTUACIONES');
+  if (!list.length) {
+    add('span', 'records-empty', 'Aún no hay records');
+  } else {
+    const table = add('table');
+    const head = table.insertRow();
+    ['#', 'NOMBRE', 'PUNTOS', 'LÍNEAS', 'COMBO'].forEach(t => {
+      const th = document.createElement('th'); th.textContent = t; head.appendChild(th);
+    });
+    list.forEach((r, i) => {
+      const tr = table.insertRow();
+      if (i === highlightIdx) tr.className = 'highlight';
+      [i + 1, r.name || 'Anónimo', r.score.toLocaleString(), r.lines, r.maxCombo]
+        .forEach(v => { tr.insertCell().textContent = v; });
+      tr.title = r.date;
+    });
+  }
+  add('span', 'records-stats', `Mejor combo: ${st.maxCombo} · Líneas máx.: ${st.maxLines}`);
+  if (list.length || st.maxCombo || st.maxLines) {
+    const btn = add('button', 'records-clear', 'Borrar records');
+    btn.type = 'button';
+    btn.addEventListener('click', clearRecords);
+  }
+}
+
+function renderAllRecords() {
+  renderRecords(document.getElementById('start-records'));
+  renderRecords(document.getElementById('over-records'));
+}
+
+function clearRecords() {
+  try { localStorage.removeItem(RECORDS_KEY); localStorage.removeItem(RECORDS_STATS_KEY); } catch (e) { /* sin persistencia */ }
+  highlightIdx = -1;
+  renderAllRecords();
+}
+
+function showGameOverRecords() {
+  overlay.dataset.mode = 'over';
+  const st = loadStats();
+  st.maxLines = Math.max(st.maxLines, lines);
+  st.maxCombo = Math.max(st.maxCombo, maxCombo);
+  saveStats(st);
+  highlightIdx = -1;
+  pendingRecord = qualifiesForRecord();
+  recordEntry.classList.toggle('hidden', !pendingRecord);
+  recordName.value = '';
+  renderAllRecords();
+  if (pendingRecord) recordName.focus();
+}
+
+recordForm.addEventListener('submit', e => {
+  e.preventDefault();
+  if (!pendingRecord) return;
+  pendingRecord = false;
+  const list = loadRecords();
+  const entry = {
+    name: recordName.value.trim().slice(0, 12) || 'Anónimo',
+    score, lines, maxCombo, date: new Date().toLocaleDateString('sv-SE'),
+  };
+  // empates: el nuevo va después de los existentes con la misma puntuación
+  let idx = list.findIndex(r => r.score < entry.score);
+  if (idx === -1) idx = list.length;
+  list.splice(idx, 0, entry);
+  list.length = Math.min(list.length, MAX_RECORDS);
+  saveRecords(list);
+  highlightIdx = idx;
+  recordEntry.classList.add('hidden');
+  renderAllRecords();
+  restartBtn.blur();
+});
+
+// Reiniciar con un record pendiente: se guarda con el nombre escrito (o Anónimo)
+restartBtn.addEventListener('click', () => {
+  if (pendingRecord) recordForm.requestSubmit();
+}, true);
+
+function isInputBlocked(e) {
+  if (e.target && e.target.tagName === 'INPUT') {
+    if (e.repeat) e.preventDefault(); // teclas mantenidas del juego no se cuelan en el input
+    return true;
+  }
+  return !startOverlay.classList.contains('hidden');
+}
+
+function showStart() {
+  init();
+  cancelAnimationFrame(animId);
+  draw();
+  highlightIdx = -1;
+  renderAllRecords();
+  startOverlay.classList.remove('hidden');
+}
+
+startBtn.addEventListener('click', () => {
+  startOverlay.classList.add('hidden');
+  init();
+  startBtn.blur();
+});
+
+showStart();
