@@ -425,7 +425,7 @@ function applySkin(name) {
   nextCanvas.style.background = bg;
   skinSelect.value = name;
   try { localStorage.setItem('skin', name); } catch (e) { /* sin persistencia */ }
-  if (current) draw();
+  if (current && !gameOver) draw();
   if (next) drawNext();
 }
 
