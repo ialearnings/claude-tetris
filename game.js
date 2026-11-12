@@ -111,8 +111,8 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    level = baseLevel + Math.floor(lines / 10);
+    dropInterval = intervalForLevel(level);
     updateHUD();
   }
 }
@@ -235,13 +235,13 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    closePauseMenu();
     lastTime = performance.now();
+    dropAccum = 0;
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    openPauseMenu();
   }
 }
 
@@ -266,10 +266,12 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  baseLevel = startLevel;
+  level = baseLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  closePauseMenu();
+  dropInterval = intervalForLevel(level);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
@@ -327,5 +329,75 @@ themeBtn.addEventListener('click', () => {
 let savedTheme = 'dark';
 try { savedTheme = localStorage.getItem('theme') === 'light' ? 'light' : 'dark'; } catch (e) { /* sin persistencia */ }
 applyTheme(savedTheme);
+
+// ---- Menú de pausa ----
+const MAX_START_LEVEL = 10;
+const pauseMenu = document.getElementById('pause-menu');
+const pmItems = ['pm-resume', 'pm-restart', 'pm-controls', 'pm-level'].map(id => document.getElementById(id));
+const pmControlsBtn = document.getElementById('pm-controls');
+const pmControlsList = document.getElementById('pm-controls-list');
+const pmLevel = document.getElementById('pm-level');
+const pmLevelVal = document.getElementById('pm-level-val');
+let menuOpen = false;
+let baseLevel = 1; // nivel inicial de la partida en curso (snapshot de startLevel)
+
+function intervalForLevel(lv) {
+  return Math.max(100, 1000 - (lv - 1) * 90);
+}
+
+function setStartLevel(n) {
+  startLevel = Math.min(MAX_START_LEVEL, Math.max(1, n));
+  pmLevelVal.textContent = startLevel;
+  pmLevel.setAttribute('aria-valuenow', String(startLevel));
+  try { localStorage.setItem('startLevel', String(startLevel)); } catch (e) { /* sin persistencia */ }
+}
+
+function openPauseMenu() {
+  menuOpen = true;
+  pmControlsList.classList.add('hidden');
+  pmControlsBtn.setAttribute('aria-expanded', 'false');
+  pauseMenu.classList.remove('hidden');
+  pmItems[0].focus();
+}
+
+function closePauseMenu() {
+  menuOpen = false;
+  pauseMenu.classList.add('hidden');
+  if (pauseMenu.contains(document.activeElement)) document.activeElement.blur();
+}
+
+// Captura: corre antes del listener del juego y bloquea sus inputs con el menú abierto
+document.addEventListener('keydown', e => {
+  if (e.code === 'Escape' || e.code === 'KeyP') {
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    if (!gameOver && !e.repeat) togglePause();
+    return;
+  }
+  if (!menuOpen) return;
+  e.stopImmediatePropagation();
+  const i = pmItems.findIndex(el => el.contains(document.activeElement));
+  if (e.code === 'ArrowDown' || e.code === 'ArrowUp' || e.code === 'Tab') {
+    e.preventDefault();
+    const d = (e.code === 'ArrowUp' || (e.code === 'Tab' && e.shiftKey)) ? -1 : 1;
+    pmItems[(i + d + pmItems.length) % pmItems.length].focus();
+  } else if (pmLevel.contains(document.activeElement) && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+    e.preventDefault();
+    setStartLevel(startLevel + (e.code === 'ArrowRight' ? 1 : -1));
+  }
+}, true);
+
+document.getElementById('pm-resume').addEventListener('click', togglePause);
+document.getElementById('pm-restart').addEventListener('click', init);
+pmControlsBtn.addEventListener('click', () => {
+  const open = pmControlsList.classList.toggle('hidden') === false;
+  pmControlsBtn.setAttribute('aria-expanded', String(open));
+});
+document.getElementById('pm-level-dec').addEventListener('click', () => setStartLevel(startLevel - 1));
+document.getElementById('pm-level-inc').addEventListener('click', () => setStartLevel(startLevel + 1));
+
+let startLevel = 1;
+try { startLevel = parseInt(localStorage.getItem('startLevel'), 10) || 1; } catch (e) { /* sin persistencia */ }
+setStartLevel(startLevel);
 
 init();
