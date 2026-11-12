@@ -221,3 +221,14 @@ kbd {
 .theme-toggle:hover {
   border-color: var(--accent);
 }
+
+/* ---- Selector de skin ---- */
+.skin-picker select {
+  background: var(--kbd-bg);
+  color: var(--text);
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: inherit;
+}
