@@ -100,6 +100,7 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
+- Un selector `<select id="skin-select">` con las skins visuales (Retro, Neon, Pastel, Pixel art); la elección se guarda en `localStorage` (clave `skin`).
 - Un overlay para los estados **PAUSA** y **GAME OVER**.
 
 ### 2. `style.css`
