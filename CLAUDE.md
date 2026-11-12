@@ -24,3 +24,5 @@ Tres archivos: `index.html` (DOM + 2 canvas: `#board` 300x600, `#next-canvas` 12
 - **Puntuación/nivel**: `LINE_SCORES[cleared] * level`; nivel = `floor(lines/10)+1`; `dropInterval = max(100, 1000 - (level-1)*90)` (se recalcula en `clearLines`). Soft drop +1/celda, hard drop +2/celda.
 - **Render**: `draw()` repinta todo cada frame (grid, tablero, ghost con alpha 0.2, pieza actual); `drawNext()` solo al hacer `spawn()`. HUD vía `updateHUD()` escribiendo en `#score/#lines/#level`.
 - **Input**: un único listener `keydown` (flechas, X rotar, Space hard drop, P pausa). El overlay (`#overlay`) sirve para pausa y game over; el botón `#restart-btn` llama a `init`.
+
+- **Records**: pantalla de inicio (`#start-overlay`, `showStart()`) antes de la primera partida. `localStorage` `tetrisRecords` (top 5 `{name,score,lines,maxCombo,date}`) y `tetrisRecordsStats` (máx. líneas/combo históricos). `endGame()` llama a `showGameOverRecords()` (input de nombre si entra en top). `combo`/`maxCombo` se actualizan en `clearLines`. El `keydown` ignora teclas si el target es un `INPUT` o la pantalla de inicio está visible (`isInputBlocked`).
