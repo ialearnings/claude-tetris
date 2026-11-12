@@ -86,6 +86,8 @@ Después abre `http://localhost:8000` en el navegador.
 | `Espacio` | Hard drop (caída instantánea)     |
 | `P`       | Pausar / reanudar                 |
 
+Al cargar aparece una pantalla de inicio con el botón **Jugar** y la tabla de records. Los records (top 5, con nombre, puntos, líneas y mejor combo) se guardan en `localStorage` (`tetrisRecords`; históricos en `tetrisRecordsStats`) y se pueden borrar con **Borrar records**. Combo = piezas consecutivas que limpian al menos una línea.
+
 ---
 
 ## Cómo funciona

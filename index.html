@@ -50,6 +50,14 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+        <div id="record-entry" class="record-entry hidden">
+          <p class="record-new">¡Nuevo récord!</p>
+          <form id="record-form" class="record-form" autocomplete="off">
+            <input id="record-name" type="text" maxlength="12" placeholder="Tu nombre" aria-label="Nombre del jugador" />
+            <button id="record-save" type="submit">Guardar</button>
+          </form>
+        </div>
+        <div id="over-records" class="records"></div>
         <button id="restart-btn">Reiniciar</button>
       </div>
     </div>
@@ -74,6 +82,14 @@
           <button type="button" id="pm-level-inc" tabindex="-1" aria-label="Subir nivel inicial">▶</button>
         </div>
         <p class="pm-hint">↑↓ navegar · Enter elegir · el nivel aplica a la próxima partida</p>
+      </div>
+    </div>
+
+    <div id="start-overlay" class="overlay">
+      <div class="overlay-box">
+        <p id="start-title">TETRIS</p>
+        <div id="start-records" class="records"></div>
+        <button id="start-btn" type="button">Jugar</button>
       </div>
     </div>
   </div>
